@@ -11,6 +11,17 @@ import { DualCameraController } from './controls.js';
 import { MiniMap } from './minimap.js';
 import { AlignmentManager } from './alignment.js';
 import { initAudio, toggleAudio, playUiClick } from './audio.js';
+import { TextureGenerator } from './textures.js';
+
+// Pre-generate Ultra-Photorealistic PBR Textures & Tactile Maps
+const walnutWoodTex = TextureGenerator.createWalnutWood();
+const walnutWoodBump = TextureGenerator.createWoodBump();
+const geometricRugTex = TextureGenerator.createGeometricRug();
+const geometricRugBump = TextureGenerator.createRugBump();
+const leatherTex = TextureGenerator.createLeather();
+const leatherBump = TextureGenerator.createLeatherBump();
+const linenFabricTex = TextureGenerator.createLinenFabric();
+const linenFabricBump = TextureGenerator.createFabricBump();
 
 // ============================================================================
 // 1. Core WebGL Setup & Zero-Frame-Drop Engine
@@ -25,10 +36,10 @@ const renderer = new THREE.WebGLRenderer({
 });
 
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Balanced ultra-sharpness without 4K GPU throttling
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.92; // Calibrated photorealistic HDR/XDR exposure
+renderer.toneMappingExposure = 1.02; // Calibrated photorealistic HDR/XDR exposure
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -42,14 +53,14 @@ const penthouseGroup = new THREE.Group();
 scene.add(buildingGroup);
 scene.add(penthouseGroup);
 
-// Post-Processing Composer with 4x Hardware MSAA (Eliminates edge and specular flickering)
-const pixelRatio = Math.min(window.devicePixelRatio, 2);
+// Post-Processing Composer (Lightweight)
+const pixelRatio = Math.min(window.devicePixelRatio, 1.5);
 const composerRenderTarget = new THREE.WebGLRenderTarget(
   window.innerWidth * pixelRatio,
   window.innerHeight * pixelRatio,
   {
     type: THREE.HalfFloatType,
-    samples: 4 // 4x MSAA inside WebGL 2 RenderTarget
+    samples: 0 // Zero MSAA on post target for smooth 60fps
   }
 );
 const composer = new EffectComposer(renderer, composerRenderTarget);
@@ -141,10 +152,8 @@ function updateLoaderUI() {
 function optimizeMaterialsAndMeshes(object, isPenthouse = false) {
   object.traverse((child) => {
     if (child.isMesh) {
-      child.castShadow = true;
+      child.castShadow = false; // Default off: Only key furniture items cast shadows (eliminates 400+ shadow draw calls!)
       child.receiveShadow = true;
-
-      // Frustum culling for 60-120 FPS
       child.frustumCulled = true;
 
       if (child.material) {
@@ -154,6 +163,71 @@ function optimizeMaterialsAndMeshes(object, isPenthouse = false) {
           mat.dithering = true;
           const name = (mat.name || '').toLowerCase();
 
+          // ================================================================
+          // A. EXTERIOR BUILDING MODEL TUNING (isPenthouse === false)
+          // Restores the iconic Mediterranean Navy Blue & Modern Sky-White
+          // ================================================================
+          if (!isPenthouse) {
+            mat.side = THREE.FrontSide;
+            mat.depthWrite = true;
+
+            // Deep Mediterranean Architectural Navy Blue facade
+            if (name.includes('exwall paint room(1)') || name.includes('blue')) {
+              mat.color.setHex(0x0f1d32); // Deep rich navy blue
+              mat.roughness = 0.40;
+              mat.metalness = 0.04;
+              mat.envMapIntensity = 1.0;
+              return;
+            }
+
+            // Crisp Sky-Tinted White architectural facade
+            if (name.includes('exwall paint room') || name.includes('exwall')) {
+              mat.color.setHex(0xc8d8e6); // Modern crisp sky-white
+              mat.roughness = 0.40;
+              mat.metalness = 0.04;
+              mat.envMapIntensity = 1.0;
+              return;
+            }
+
+            // Deep Black exterior window framing and architectural trims
+            if (name.includes('black_exterior') || name.includes('ral-9005') || name.includes('deep black')) {
+              mat.color.setHex(0x111114);
+              mat.roughness = 0.30;
+              mat.metalness = 0.85;
+              mat.envMapIntensity = 1.4;
+              return;
+            }
+
+            // Exterior glass
+            if (name.includes('glass') || name.includes('glas') || name.includes('vidro')) {
+              mat.transparent = true;
+              mat.opacity = 0.40;
+              mat.color.setHex(0xd0e8ff);
+              mat.roughness = 0.05;
+              mat.metalness = 0.85;
+              mat.envMapIntensity = 2.0;
+              mat.depthWrite = false;
+              mat.side = THREE.DoubleSide;
+              return;
+            }
+
+            // Concrete aggregate & stone
+            if (name.includes('concrete') || name.includes('screed') || name.includes('concreto')) {
+              mat.roughness = 0.65;
+              mat.metalness = 0.05;
+              mat.envMapIntensity = 0.7;
+              return;
+            }
+
+            // Keep all other exterior building materials as designed
+            return;
+          }
+
+          // ================================================================
+          // B. PENTHOUSE INTERIOR MODEL TUNING (isPenthouse === true)
+          // Ultra-Photorealistic Luxury Architectural Finish
+          // ================================================================
+
           // 1. Hide duplicate CAD structural wall core
           if (name.includes('default wall') || name.includes('default_wall')) {
             child.visible = false;
@@ -161,39 +235,59 @@ function optimizeMaterialsAndMeshes(object, isPenthouse = false) {
             return;
           }
 
-          // 2. Photorealistic Architectural Venetian Cream Drywall (ZERO MOIRE & NOISE)
+          // 2. Interior Walls: Tactile Luxury Venetian Drywall Plaster
+          // Natural photographic texture + micro-relief normal + satin eggshell sheen (NOT flat, NO moire)
           if (name.includes('plaster') || name.includes('wall') || name.includes('paint') || name.includes('branco')) {
-            child.castShadow = false; // No self-shadow acne
-            child.receiveShadow = true; // Receives soft realistic ambient & directional shadows
-            
-            // ELIMINATE NORMAL MAP MOIRE: CAD normal map had micro-bump aliasing that caused concentric wavy interference
-            mat.normalMap = null;
-            if (mat.normalScale) mat.normalScale.set(0, 0);
+            child.castShadow = false; // Eliminates shadow acne moire
+            child.receiveShadow = true; // Soft natural shadow falloff from fixtures & windows
 
-            // Exact warm luxury Venetian drywall cream matching reference living room
-            mat.color.setHex(0xf5f2eb);
-            mat.roughness = 0.85;
+            // Preserve natural diffuse plaster map if present
+            if (mat.map) {
+              mat.color.setHex(0xfbf8f3); // Subtle warm luxury tint
+            } else {
+              mat.color.setHex(0xf5f1ea); // Warm Venetian cream drywall
+            }
+
+            // Calibrate micro-normal map: subtle tactile plaster texture without high-frequency moire
+            if (mat.normalMap) {
+              mat.normalScale.set(0.08, 0.08); // Tactile micro-grain without distance moire
+            }
+
+            // Satin eggshell sheen: catches soft ambient highlights from fixtures & windows (NOT flat!)
+            mat.roughness = 0.52;
             mat.metalness = 0.0;
-            mat.envMapIntensity = 0.45;
+            mat.envMapIntensity = 0.60;
             mat.side = THREE.FrontSide;
             mat.depthWrite = true;
             mat.needsUpdate = true;
             return;
           }
 
-          // 3. Doors: Rich Dark Espresso Walnut & Dark Metal Hardware (Matching reference living room)
+          // 3. Chandeliers, Pendants & Sconces: Radiant Self-Illumination Glow
+          if (name.includes('ilumina') || name.includes('pendente') || name.includes('luz') || name.includes('lamp') || name.includes('light fixture')) {
+            child.castShadow = false;
+            mat.color.setHex(0xfffaee);
+            mat.emissive.setHex(0xffe8c8); // Warm luxury chandelier glow
+            mat.emissiveIntensity = 2.4;
+            mat.roughness = 0.20;
+            mat.metalness = 0.10;
+            mat.needsUpdate = true;
+            return;
+          }
+
+          // 4. Doors: Rich Dark Espresso Walnut & Dark Metal Hardware (Matching reference)
           if (name.includes('door')) {
             child.castShadow = true;
             child.receiveShadow = true;
             if (name.includes('handle')) {
-              mat.color.setHex(0x1e1e1e);
+              mat.color.setHex(0x1a1a1a);
               mat.roughness = 0.20;
               mat.metalness = 0.90;
               mat.envMapIntensity = 1.8;
             } else {
-              // Frame, panel, architrave: Deep dark espresso walnut wood
-              mat.color.setHex(0x2a1f18);
-              mat.roughness = 0.36;
+              // Frame, panel, architrave: Deep dark espresso walnut wood with satin sheen
+              mat.color.setHex(0x281d16);
+              mat.roughness = 0.35;
               mat.metalness = 0.04;
               mat.envMapIntensity = 1.1;
             }
@@ -202,12 +296,12 @@ function optimizeMaterialsAndMeshes(object, isPenthouse = false) {
             return;
           }
 
-          // 4. Windows: Crisp Modern White Sash & Clear Glass (Matching reference)
-          if (name.includes('window frame') || name.includes('window_frame') || (name.includes('frame') && !name.includes('light'))) {
+          // 5. Windows: Crisp Modern White Sash & Clear Architectural Glazing
+          if (name.includes('window frame') || name.includes('window_frame') || (name.includes('frame') && !name.includes('light') && !name.includes('door'))) {
             child.castShadow = true;
             child.receiveShadow = true;
-            mat.color.setHex(0xf2f2f2); // Modern crisp white window sash
-            mat.roughness = 0.28;
+            mat.color.setHex(0xf4f4f4); // Crisp modern white window sash
+            mat.roughness = 0.26;
             mat.metalness = 0.05;
             mat.envMapIntensity = 1.2;
             mat.side = THREE.FrontSide;
@@ -216,28 +310,120 @@ function optimizeMaterialsAndMeshes(object, isPenthouse = false) {
 
           if (name.includes('glass') || name.includes('glas') || name.includes('vidro') || name.includes('cristal')) {
             mat.transparent = true;
-            mat.opacity = 0.25;
+            mat.opacity = 0.28;
             mat.color.setHex(0xffffff);
             mat.roughness = 0.02;
             mat.metalness = 0.15;
-            mat.envMapIntensity = 2.2;
+            mat.envMapIntensity = 2.4;
             mat.depthWrite = false;
             mat.side = THREE.DoubleSide;
             return;
           }
 
-          // 5. Wood Flooring: Warm Honey Oak Parquet
-          if (name.includes('wood') || name.includes('floor') || name.includes('parquet') || name.includes('madeira')) {
+          // 6. Luxury Dining Table & Wooden Furniture: Grained Walnut Wood & Specular Relief
+          if (name.includes('dinig') || name.includes('dining table') || (name.includes('madeira') && !name.includes('floor') && !name.includes('cabide') && !name.includes('vaso')) || name.includes('melamina wengue') || name.includes('mdf alabama')) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            mat.map = walnutWoodTex;
+            mat.bumpMap = walnutWoodBump;
+            mat.bumpScale = 0.035; // Physical wood pore and grain relief
+            mat.color.setHex(0xffffff); // Crisp wood grain reproduction
+            mat.roughness = 0.28; // Polished luxury oiled walnut sheen
+            mat.metalness = 0.04;
+            mat.envMapIntensity = 1.35;
+            mat.side = THREE.FrontSide;
+            mat.needsUpdate = true;
+            return;
+          }
+
+          // 7. Area Rug: Scandinavian Geometric Modern Plush Wool / Fur Weave
+          // (Matching reference high-pile geometric rug under the dining table)
+          if (name.includes('carpet') || name.includes('tapete') || name.includes('rug')) {
             child.castShadow = false;
             child.receiveShadow = true;
-            mat.roughness = 0.32;
+            mat.map = geometricRugTex;
+            mat.bumpMap = geometricRugBump;
+            mat.bumpScale = 0.12; // Deep tactile high-pile plush wool/fur texture
+            mat.color.setHex(0xffffff);
+            mat.roughness = 0.94; // Matte luxury wool finish
+            mat.metalness = 0.0;
+            mat.envMapIntensity = 0.35;
+            mat.side = THREE.FrontSide;
+            mat.needsUpdate = true;
+            return;
+          }
+
+          // 8. Dining Chairs & Bespoke Sofa: Italian Pebbled Top-Grain Leather
+          if (name.includes('leather') || name.includes('couro')) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            mat.map = leatherTex;
+            mat.bumpMap = leatherBump;
+            mat.bumpScale = 0.05; // Pebbled leather grain relief
+            mat.color.setHex(0xffffff);
+            mat.roughness = 0.34; // Supple semi-gloss leather reflection
+            mat.metalness = 0.05;
+            mat.envMapIntensity = 1.25;
+            mat.side = THREE.FrontSide;
+            mat.needsUpdate = true;
+            return;
+          }
+
+          // 9. Sofa Cushions & Upholstery: Textured Woven Bouclé / Linen Fabric
+          if (((name.includes('tela') && !name.includes('quadro')) || name.includes('cloth') || name.includes('lino') || name.includes('tecido') || name.includes('fabric')) && !name.includes('leather')) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            if (!mat.map) {
+              mat.map = linenFabricTex;
+            }
+            mat.bumpMap = linenFabricBump;
+            mat.bumpScale = 0.06; // Fine woven textile bump
+            mat.roughness = 0.76;
+            mat.metalness = 0.0;
+            mat.envMapIntensity = 0.45;
+            mat.side = THREE.FrontSide;
+            mat.needsUpdate = true;
+            return;
+          }
+
+          // 10. Ceramic & Porcelain Vases on Table: Artisan Glaze & Specular Reflections
+          if (name.includes('vaso') || name.includes('porcelain') || name.includes('ceramica') || name.includes('cerâmica')) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            if (!mat.map) {
+              mat.color.setHex(0xfbfaf7); // Artisan off-white porcelain
+            }
+            mat.roughness = 0.14; // Glossy glazed ceramic
+            mat.metalness = 0.05;
+            mat.envMapIntensity = 1.80; // High specular reflections
+            mat.side = THREE.FrontSide;
+            mat.needsUpdate = true;
+            return;
+          }
+
+          // 11. Art Gallery Paintings on the Walls: Fine Canvas Sheen
+          if (name.includes('quadro') || (name.includes('tela') && name.includes('quadro')) || name.includes('canvas')) {
+            child.castShadow = false;
+            child.receiveShadow = true;
+            mat.roughness = 0.35;
             mat.metalness = 0.04;
-            mat.envMapIntensity = 1.1;
+            mat.envMapIntensity = 0.9;
             mat.side = THREE.FrontSide;
             return;
           }
 
-          // 6. Polished Marble & Stone
+          // 12. Wood Parquet Flooring: Warm Honey Oak with Satin Reflections
+          if (name.includes('floor') || name.includes('parquet') || name.includes('oak')) {
+            child.castShadow = false;
+            child.receiveShadow = true;
+            mat.roughness = 0.24; // Satin floor finish with soft window reflections
+            mat.metalness = 0.04;
+            mat.envMapIntensity = 1.25;
+            mat.side = THREE.FrontSide;
+            return;
+          }
+
+          // 13. Polished Marble & Stone
           if (name.includes('marble') || name.includes('marmol') || name.includes('granite') || name.includes('stone') || name.includes('tile')) {
             child.castShadow = false;
             child.receiveShadow = true;
@@ -248,7 +434,7 @@ function optimizeMaterialsAndMeshes(object, isPenthouse = false) {
             return;
           }
 
-          // 7. Polished Architectural Metals
+          // 14. Polished Architectural Metals (Gold, Chrome, Brass, Steel)
           if (name.includes('metal') || name.includes('gold') || name.includes('chrome') || name.includes('brass') || name.includes('steel')) {
             child.castShadow = true;
             child.receiveShadow = true;
@@ -258,14 +444,14 @@ function optimizeMaterialsAndMeshes(object, isPenthouse = false) {
             return;
           }
 
-          // Default fallback
+          // Fallback PBR settings
           mat.depthWrite = true;
           mat.side = THREE.FrontSide;
           if (mat.roughness !== undefined && mat.roughness < 0.15) {
-            mat.roughness = 0.3;
+            mat.roughness = 0.30;
           }
           if (mat.envMapIntensity !== undefined) {
-            mat.envMapIntensity = 0.8;
+            mat.envMapIntensity = 0.85;
           }
         });
       }
@@ -376,7 +562,7 @@ async function loadModels() {
     penthouseCeilingMesh = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
     penthouseCeilingMesh.name = 'Penthouse_Interior_Ceiling';
     penthouseCeilingMesh.position.set(posX, 33.22, posZ);
-    penthouseCeilingMesh.castShadow = true;
+    penthouseCeilingMesh.castShadow = false; // Allows sun and natural light to stream in and cast crisp interior shadows
     penthouseCeilingMesh.receiveShadow = true;
     penthouseGroup.add(penthouseCeilingMesh);
 
@@ -385,8 +571,8 @@ async function loadModels() {
     perimeterGroup.name = 'Penthouse_Surrounding_Walls';
 
     const wallMat = new THREE.MeshStandardMaterial({
-      color: 0xf5f2eb, // Exact Venetian cream plaster matching interior walls
-      roughness: 0.85,
+      color: 0xf5f1ea, // Exact Venetian cream plaster matching interior walls
+      roughness: 0.52, // Satin eggshell sheen (NOT flat)
       metalness: 0.0,
       dithering: true,
       side: THREE.FrontSide
@@ -665,7 +851,7 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   composer.setSize(window.innerWidth, window.innerHeight);
   if (miniMap) miniMap.resizeCanvas();
 });

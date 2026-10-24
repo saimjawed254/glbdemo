@@ -16,7 +16,7 @@ export class AlignmentManager {
       scale: 1.0,
       walkSpeed: 2.0, // Calibrated luxury walkthrough speed
       mouseSens: 1.0,
-      exposure: 0.92, // Calibrated photorealistic HDR exposure
+      exposure: 1.02, // Calibrated photorealistic HDR exposure
       buildingVis: true,
       roofVis: true,
       penthouseVis: true
@@ -29,7 +29,7 @@ export class AlignmentManager {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.exposure && (parsed.exposure > 1.10 || parsed.exposure < 0.70)) parsed.exposure = 0.92;
+        if (parsed.exposure && (parsed.exposure > 1.25 || parsed.exposure < 0.70)) parsed.exposure = 1.02;
         if (parsed.walkSpeed && parsed.walkSpeed > 3.0) parsed.walkSpeed = 2.0;
         this.state = { ...this.state, ...parsed };
       } catch (e) {}

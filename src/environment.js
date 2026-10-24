@@ -19,12 +19,12 @@ export class EnvironmentManager {
         bgMid: '#5c433b',
         bgBottom: '#0b0d12',
         sunColor: 0xffd8b0,
-        sunIntensity: 2.2,
-        sunPosition: new THREE.Vector3(50, 42, 60),
+        sunIntensity: 2.6,
+        sunPosition: new THREE.Vector3(-18, 38, 32), // Angled through panoramic terrace windows
         hemiSky: 0xffeedd,
         hemiGround: 0x3a2e28,
-        hemiIntensity: 0.35,
-        exposure: 0.92,
+        hemiIntensity: 0.32,
+        exposure: 1.02,
         fogColor: 0x16131c,
         fogDensity: 0.0012,
         interiorWarmth: 1.0
@@ -36,15 +36,15 @@ export class EnvironmentManager {
         bgMid: '#a8c6e2',
         bgBottom: '#101721',
         sunColor: 0xfff6ec,
-        sunIntensity: 2.0,
-        sunPosition: new THREE.Vector3(45, 65, 40),
+        sunIntensity: 2.4,
+        sunPosition: new THREE.Vector3(-15, 42, 28), // High radiant daytime sun streaming through glazing
         hemiSky: 0xddeeff,
         hemiGround: 0x2e3540,
-        hemiIntensity: 0.38,
-        exposure: 0.90,
+        hemiIntensity: 0.35,
+        exposure: 1.00,
         fogColor: 0x1c2838,
         fogDensity: 0.0008,
-        interiorWarmth: 0.8
+        interiorWarmth: 0.85
       },
       {
         name: 'TWILIGHT LUXURY',
@@ -53,65 +53,105 @@ export class EnvironmentManager {
         bgMid: '#161d2d',
         bgBottom: '#06070a',
         sunColor: 0xff8c55,
-        sunIntensity: 1.4,
-        sunPosition: new THREE.Vector3(30, 20, -50),
+        sunIntensity: 1.6,
+        sunPosition: new THREE.Vector3(-22, 28, 30),
         hemiSky: 0x5a4066,
         hemiGround: 0x1a1520,
-        hemiIntensity: 0.25,
-        exposure: 0.95,
+        hemiIntensity: 0.22,
+        exposure: 1.05,
         fogColor: 0x0a0f18,
         fogDensity: 0.0018,
-        interiorWarmth: 1.2
+        interiorWarmth: 1.25
       }
     ];
 
     this.interiorLights = [];
+    this.interiorSpotlights = [];
     this.initLights();
     this.applyPreset(0);
   }
 
   initLights() {
-    // 1. Directional Sun Light focused directly on Penthouse
-    this.sunLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    // 1. Directional Sun Light streaming through windows (Optimized 1024x1024 shadow map)
+    this.sunLight = new THREE.DirectionalLight(0xffffff, 2.6);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 2048;
-    this.sunLight.shadow.mapSize.height = 2048;
-    this.sunLight.shadow.camera.near = 5;
-    this.sunLight.shadow.camera.far = 120;
+    this.sunLight.shadow.mapSize.width = 1024;
+    this.sunLight.shadow.mapSize.height = 1024;
+    this.sunLight.shadow.camera.near = 2;
+    this.sunLight.shadow.camera.far = 110;
     
-    // Shadow frustum tightly covering the penthouse and roof
-    const d = 26;
+    // Shadow frustum tightly covering the penthouse footprint
+    const d = 24;
     this.sunLight.shadow.camera.left = -d;
     this.sunLight.shadow.camera.right = d;
     this.sunLight.shadow.camera.top = d;
     this.sunLight.shadow.camera.bottom = -d;
     this.sunLight.shadow.bias = -0.0001;
     this.sunLight.shadow.normalBias = 0.02;
-    this.sunLight.shadow.radius = 2.0;
+    this.sunLight.shadow.radius = 1.5; // Photorealistic soft shadow edges
 
-    // Target the center of the penthouse (X ~ 20.35, Y ~ 31.55, Z ~ 9.83)
+    // Target the center of the penthouse living and dining salon
     this.sunLightTarget = new THREE.Object3D();
-    this.sunLightTarget.position.set(20.35, 31.55, 9.83);
+    this.sunLightTarget.position.set(20.35, 30.5, 9.83);
     this.scene.add(this.sunLightTarget);
     this.sunLight.target = this.sunLightTarget;
 
     this.scene.add(this.sunLight);
 
     // 2. Soft Architectural Skylight
-    this.hemiLight = new THREE.HemisphereLight(0xffeedd, 0x3a2e28, 0.35);
+    this.hemiLight = new THREE.HemisphereLight(0xffeedd, 0x3a2e28, 0.32);
     this.hemiLight.position.set(0, 80, 0);
     this.scene.add(this.hemiLight);
 
-    // 3. Upward Floor-to-Ceiling Architectural Indirect Bounce Light (Makes ceiling luminous and clean)
-    this.ceilingBounceLight = new THREE.HemisphereLight(0xfff5ea, 0x222222, 0.40);
+    // 3. Upward Floor-to-Ceiling Architectural Indirect Bounce Light
+    this.ceilingBounceLight = new THREE.HemisphereLight(0xfff5ea, 0x222222, 0.35);
     this.ceilingBounceLight.position.set(20.35, 29.5, 9.83);
     this.scene.add(this.ceilingBounceLight);
 
-    // 4. Warm Ambient Interior Fill (Preserves rich darks without clipping)
-    this.ambientLight = new THREE.AmbientLight(0xfff4e6, 0.20);
+    // 4. Warm Ambient Interior Fill
+    this.ambientLight = new THREE.AmbientLight(0xfff4e6, 0.16);
     this.scene.add(this.ambientLight);
 
-    // 5. Dedicated Warm Penthouse Interior Accent Lights
+    // 5. Dedicated Architectural Chandelier Spotlight Above Dining Table
+    // Casts crisp, smooth contact shadows under vases, dining table, chairs, and rug
+    this.diningChandelier = new THREE.SpotLight(0xfff1dc, 3.2, 14, Math.PI / 3, 0.42, 1.8);
+    this.diningChandelier.position.set(20.0, 32.7, 8.5);
+    this.diningChandelierTarget = new THREE.Object3D();
+    this.diningChandelierTarget.position.set(20.0, 30.0, 8.5);
+    this.scene.add(this.diningChandelierTarget);
+    this.diningChandelier.target = this.diningChandelierTarget;
+    this.diningChandelier.castShadow = true;
+    this.diningChandelier.shadow.mapSize.width = 1024;
+    this.diningChandelier.shadow.mapSize.height = 1024;
+    this.diningChandelier.shadow.bias = -0.0001;
+    this.diningChandelier.shadow.normalBias = 0.02;
+    this.diningChandelier.shadow.radius = 1.8;
+    this.scene.add(this.diningChandelier);
+    this.interiorSpotlights.push(this.diningChandelier);
+
+    // B. Living Room Salon Spotlight (Soft fill without costly secondary shadow pass)
+    this.livingSpotlight = new THREE.SpotLight(0xfff2df, 2.6, 14, Math.PI / 3, 0.42, 1.8);
+    this.livingSpotlight.position.set(21.0, 32.7, 4.5);
+    this.livingSpotlightTarget = new THREE.Object3D();
+    this.livingSpotlightTarget.position.set(21.0, 30.0, 4.5);
+    this.scene.add(this.livingSpotlightTarget);
+    this.livingSpotlight.target = this.livingSpotlightTarget;
+    this.livingSpotlight.castShadow = false;
+    this.scene.add(this.livingSpotlight);
+    this.interiorSpotlights.push(this.livingSpotlight);
+
+    // C. Gourmet Kitchen Island Spotlight
+    this.kitchenSpotlight = new THREE.SpotLight(0xfff4e4, 2.2, 12, Math.PI / 3.2, 0.38, 1.8);
+    this.kitchenSpotlight.position.set(22.0, 32.7, 14.0);
+    this.kitchenSpotlightTarget = new THREE.Object3D();
+    this.kitchenSpotlightTarget.position.set(22.0, 30.0, 14.0);
+    this.scene.add(this.kitchenSpotlightTarget);
+    this.kitchenSpotlight.target = this.kitchenSpotlightTarget;
+    this.kitchenSpotlight.castShadow = false;
+    this.scene.add(this.kitchenSpotlight);
+    this.interiorSpotlights.push(this.kitchenSpotlight);
+
+    // 6. Dedicated Warm Penthouse Interior Accent Lights
     const interiorPositions = [
       new THREE.Vector3(10.5, 32.2, 3.5),   // Grand Foyer
       new THREE.Vector3(21.0, 32.2, 4.5),   // Grand Living & Dining Salon
@@ -121,13 +161,14 @@ export class EnvironmentManager {
     ];
 
     interiorPositions.forEach((pos) => {
-      const pLight = new THREE.PointLight(0xffecd2, 0.60, 12, 1.8);
+      const pLight = new THREE.PointLight(0xffecd2, 0.55, 12, 1.8);
       pLight.position.copy(pos);
       pLight.castShadow = false;
       this.scene.add(pLight);
+      this.interiorLights.push(pLight);
     });
 
-    // 6. Exponential Fog for atmospheric depth
+    // 7. Exponential Fog for atmospheric depth
     this.scene.fog = new THREE.FogExp2(0x101520, 0.0016);
   }
 
@@ -225,8 +266,12 @@ export class EnvironmentManager {
 
     // Interior warm lights
     this.interiorLights.forEach(light => {
-      light.intensity = 1.6 * p.interiorWarmth;
+      light.intensity = 0.55 * p.interiorWarmth;
     });
+
+    if (this.diningChandelier) this.diningChandelier.intensity = 3.2 * p.interiorWarmth;
+    if (this.livingSpotlight) this.livingSpotlight.intensity = 2.8 * p.interiorWarmth;
+    if (this.kitchenSpotlight) this.kitchenSpotlight.intensity = 2.4 * p.interiorWarmth;
 
     return p;
   }
