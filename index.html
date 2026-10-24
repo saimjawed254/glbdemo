@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AURA PENTHOUSE | Ultra-Realistic Architectural WebGL Experience</title>
+  <meta name="description" content="Awwwards-caliber photorealistic 60FPS WebGL architectural showcase and real-time first-person walkthrough of the Aura Tower Penthouse.">
+
+  <!-- Google Fonts: Syne, Cinzel, Inter, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- WebGL Canvas -->
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- First-Person Crosshair -->
+    <div id="crosshair" class="crosshair hidden">
+      <div class="crosshair-dot"></div>
+      <div class="crosshair-ring"></div>
+    </div>
+
+    <!-- Floating Non-Blocking First-Person Status Pill -->
+    <div id="fps-guide-pill" class="fps-guide-pill hidden">
+      <div class="guide-dot"></div>
+      <span class="guide-text"><b>WALKTHROUGH ACTIVE:</b> Click anywhere to lock mouse &bull; <b>W,A,S,D</b> to move &bull; <b>Shift</b> to sprint</span>
+      <button id="btn-dismiss-guide" class="guide-close" title="Dismiss">&times;</button>
+    </div>
+
+    <!-- Top Luxury Header Navigation -->
+    <header class="luxury-header">
+      <div class="brand-group">
+        <div class="brand-mark">
+          <span class="mark-roman">XI</span>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">AURA RESIDENCES</h1>
+          <span class="brand-subtitle">THE PENTHOUSE &bull; LEVEL 11</span>
+        </div>
+      </div>
+
+      <!-- Mode Switcher Pill -->
+      <div class="mode-switcher-container">
+        <div class="mode-pill">
+          <button id="btn-mode-exterior" class="mode-btn active" title="View Building Architecture from Outside">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h2v2H9zm4 0h2v2h-2zm-4 4h2v2H9zm4 0h2v2h-2zm-4 4h2v2H9zm4 0h2v2h-2z"/>
+            </svg>
+            <span>EXTERIOR ARCHITECTURE</span>
+          </button>
+          <button id="btn-mode-walkthrough" class="mode-btn" title="Walk Inside Detailed Penthouse (First Person)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>
+            </svg>
+            <span>PENTHOUSE WALKTHROUGH</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Actions / Environment / Stats -->
+      <div class="header-actions">
+        <!-- Roof Cutaway Toggle Button -->
+        <button id="btn-toggle-roof" class="action-icon-btn" title="Toggle Building Roof to Reveal Detailed Penthouse">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span id="roof-label" class="action-label">ROOF: ON</span>
+        </button>
+
+        <!-- Lighting Mood Preset -->
+        <div class="action-dropdown-wrapper">
+          <button id="btn-lighting" class="action-icon-btn" title="Change Lighting Atmosphere">
+            <svg id="lighting-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"/>
+              <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42m12.72-12.72 1.42-1.42"/>
+            </svg>
+            <span id="lighting-label" class="action-label">GOLDEN HOUR</span>
+          </button>
+        </div>
+
+        <!-- Ambient Sound Toggle -->
+        <button id="btn-sound" class="action-icon-btn" title="Toggle Ambient Audio Experience">
+          <svg id="sound-icon-on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          </svg>
+          <svg id="sound-icon-off" class="hidden" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <line x1="23" y1="9" x2="17" y2="15"/>
+            <line x1="17" y1="9" x2="23" y2="15"/>
+          </svg>
+        </button>
+
+        <!-- Calibration Drawer Toggle -->
+        <button id="btn-tuner-toggle" class="action-icon-btn" title="Open Fine-Alignment & Shader Tuner (H)">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+
+        <!-- Realtime FPS / Performance Badge -->
+        <div class="perf-badge">
+          <div class="perf-pulse"></div>
+          <span id="fps-display">60 FPS</span>
+          <span class="perf-divider">&bull;</span>
+          <span id="resolution-display">ULTRA</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Bottom-Left Interactive Mini-Map HUD -->
+    <div id="minimap-container" class="minimap-card">
+      <div class="minimap-header">
+        <div class="minimap-title-group">
+          <span class="minimap-tag">PENTHOUSE RADAR</span>
+          <h4 id="minimap-room-label">MASTER PENTHOUSE FLOOR</h4>
+        </div>
+        <div class="minimap-actions">
+          <button id="btn-minimap-recenter" class="minimap-mini-btn" title="Recenter on Player">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+          <button id="btn-minimap-toggle-size" class="minimap-mini-btn" title="Toggle Size">
+            <svg id="minimap-expand-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Canvas for 2D Blueprint, Radar Sweeps & Interactive Pins -->
+      <div class="minimap-canvas-wrapper">
+        <canvas id="minimap-canvas" width="280" height="240"></canvas>
+        <div class="radar-scanline"></div>
+      </div>
+
+      <!-- Quick Room Teleport Strip -->
+      <div class="minimap-quick-rooms">
+        <button class="room-chip" data-room="foyer">Foyer</button>
+        <button class="room-chip" data-room="living">Grand Lounge</button>
+        <button class="room-chip" data-room="dining">Dining & Bar</button>
+        <button class="room-chip" data-room="master">Master Suite</button>
+        <button class="room-chip" data-room="terrace">Sky Balcony</button>
+      </div>
+
+      <div class="minimap-footer">
+        <span class="floor-spec">FLOOR 11 &bull; 6,240 SQ FT</span>
+        <span id="player-coords" class="coord-spec">X: 00.0 Z: 00.0</span>
+      </div>
+    </div>
+
+    <!-- Bottom Center HUD: Navigation Controls Tip -->
+    <div id="controls-hint" class="controls-hint">
+      <div id="hint-exterior" class="hint-content">
+        <span class="key-badge">LEFT DRAG</span> Orbit Building
+        <span class="hint-dot">&bull;</span>
+        <span class="key-badge">RIGHT DRAG</span> Pan
+        <span class="hint-dot">&bull;</span>
+        <span class="key-badge">SCROLL</span> Zoom In/Out
+        <span class="hint-dot">&bull;</span>
+        <button id="btn-enter-penthouse-quick" class="hint-action-btn">
+          ENTER PENTHOUSE &rarr;
+        </button>
+      </div>
+      <div id="hint-walkthrough" class="hint-content hidden">
+        <span class="key-badge">W A S D</span> Walk
+        <span class="hint-dot">&bull;</span>
+        <span class="key-badge">MOUSE</span> Look Around
+        <span class="hint-dot">&bull;</span>
+        <span class="key-badge">SHIFT</span> Sprint
+        <span class="hint-dot">&bull;</span>
+        <span class="key-badge">SCROLL</span> Zoom Lens
+        <span class="hint-dot">&bull;</span>
+        <span class="key-badge">SPACE</span> Float / Jump
+        <span class="hint-dot">&bull;</span>
+        <button id="btn-exit-to-exterior-quick" class="hint-action-btn">
+          &larr; EXIT TO EXTERIOR
+        </button>
+      </div>
+    </div>
+
+    <!-- Collapsible Fine-Alignment & Calibration Drawer (Gear icon / Press 'H') -->
+    <aside id="alignment-drawer" class="alignment-drawer hidden">
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <span class="drawer-tag">PRO CALIBRATION TOOL</span>
+          <h3>Penthouse Alignment & Shaders</h3>
+        </div>
+        <button id="btn-close-drawer" class="drawer-close-btn">&times;</button>
+      </div>
+
+      <div class="drawer-body">
+        <p class="drawer-desc">
+          Live-adjust the position, rotation, and lighting of the top floor penthouse relative to the apartment building.
+        </p>
+
+        <!-- Position X, Y, Z -->
+        <div class="control-group">
+          <div class="control-label-row">
+            <label>Penthouse Offset X</label>
+            <span id="val-pos-x" class="control-value">0.00 m</span>
+          </div>
+          <input type="range" id="slider-pos-x" min="-10" max="10" step="0.05" value="0">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label-row">
+            <label>Penthouse Height Y (Floor Level)</label>
+            <span id="val-pos-y" class="control-value">0.00 m</span>
+          </div>
+          <input type="range" id="slider-pos-y" min="-10" max="10" step="0.05" value="0">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label-row">
+            <label>Penthouse Offset Z</label>
+            <span id="val-pos-z" class="control-value">0.00 m</span>
+          </div>
+          <input type="range" id="slider-pos-z" min="-10" max="10" step="0.05" value="0">
+        </div>
+
+        <!-- Rotation & Scale -->
+        <div class="control-group">
+          <div class="control-label-row">
+            <label>Penthouse Rotation Y (Azimuth)</label>
+            <span id="val-rot-y" class="control-value">0.0&deg;</span>
+          </div>
+          <input type="range" id="slider-rot-y" min="-180" max="180" step="0.5" value="0">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label-row">
+            <label>Penthouse Scale Factor</label>
+            <span id="val-scale" class="control-value">1.000x</span>
+          </div>
+          <input type="range" id="slider-scale" min="0.8" max="1.2" step="0.002" value="1.0">
+        </div>
+
+        <!-- Walk Speed & Sensitivity -->
+        <div class="control-group">
+          <div class="control-label-row">
+            <label>Walking Speed</label>
+            <span id="val-walk-speed" class="control-value">4.5 m/s</span>
+          </div>
+          <input type="range" id="slider-walk-speed" min="1.0" max="10.0" step="0.2" value="4.5">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label-row">
+            <label>Mouse Look Sensitivity</label>
+            <span id="val-mouse-sens" class="control-value">1.0x</span>
+          </div>
+          <input type="range" id="slider-mouse-sens" min="0.2" max="3.0" step="0.1" value="1.0">
+        </div>
+
+        <!-- Exposure & Quality -->
+        <div class="control-group">
+          <div class="control-label-row">
+            <label>ACES Filmic Tone Exposure</label>
+            <span id="val-exposure" class="control-value">1.15</span>
+          </div>
+          <input type="range" id="slider-exposure" min="0.4" max="2.5" step="0.05" value="1.15">
+        </div>
+
+        <!-- Toggles -->
+        <div class="toggle-row">
+          <span>Show Entire Building</span>
+          <input type="checkbox" id="toggle-building-vis" checked>
+        </div>
+        <div class="toggle-row">
+          <span>Show Building Roof</span>
+          <input type="checkbox" id="toggle-roof-vis" checked>
+        </div>
+        <div class="toggle-row">
+          <span>Show Detailed Penthouse</span>
+          <input type="checkbox" id="toggle-penthouse-vis" checked>
+        </div>
+
+        <!-- Actions -->
+        <div class="drawer-actions">
+          <button id="btn-copy-alignment" class="btn-primary">
+            Copy Transform JSON
+          </button>
+          <button id="btn-reset-alignment" class="btn-secondary">
+            Reset to Defaults
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Luxury Architectural Loading Screen -->
+    <div id="loader-screen" class="loader-screen">
+      <div class="loader-content">
+        <div class="loader-logo">
+          <span class="logo-roman">AURA</span>
+          <span class="logo-desc">PENTHOUSE RESIDENCES</span>
+        </div>
+        
+        <div class="loader-bar-track">
+          <div id="loader-bar-fill" class="loader-bar-fill"></div>
+        </div>
+
+        <div class="loader-meta">
+          <span id="loader-status" class="loader-status">Initializing Real-time WebGL Engine...</span>
+          <span id="loader-percent" class="loader-percent">0%</span>
+        </div>
+
+        <div class="loader-specs">
+          <span>HIGH-PRECISION 60FPS ENGINE</span>
+          <span>&bull;</span>
+          <span>PBR PHYSICAL SHADERS</span>
+          <span>&bull;</span>
+          <span>INTERACTIVE RADAR HUD</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

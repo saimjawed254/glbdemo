@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+
+# Local Environment & IDE
+.env
+.env.local
+.env.*.local
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Tools & Temporary Scripts
+tools/
+*.mjs
+scratch/
+
+# Large Raw / Offline 3D source assets (>100MB, not used in web production)
+/penthouse_raw.glb
+/penthouse_blender.glb
+/Optimized_Interior.glb
+/Apartment detailed without roof.glb
+/penthouse_hq.glb
+/penthouse_test_km.glb
+/penthouse_web.glb
+/Apartment model.glb
+public/Optimized_Interior.glb
+public/Apartment detailed without roof.glb
